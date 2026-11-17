@@ -9,11 +9,15 @@ abstract final class AppTheme {
 
   static ThemeData _theme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-    final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: brightness,
-      surface: isDark ? AppColors.darkSurface : Colors.white,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          brightness: brightness,
+          surface: isDark ? AppColors.darkSurface : Colors.white,
+        ).copyWith(
+          onSurface: isDark ? Colors.white : AppColors.darkText,
+          onSurfaceVariant: AppColors.secondaryText,
+        );
     final textColor = isDark ? Colors.white : AppColors.darkText;
 
     return ThemeData(

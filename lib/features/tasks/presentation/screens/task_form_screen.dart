@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/figma_background.dart';
+import '../../../../core/widgets/figma_back_button.dart';
+import '../../../../core/widgets/figma_button.dart';
+import '../../../../core/widgets/figma_field.dart';
 import '../providers/task_provider.dart';
 import '../../domain/task.dart';
 
@@ -165,80 +170,126 @@ class _TaskFormEditorState extends ConsumerState<_TaskFormEditor> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.task != null;
-    final localizations = MaterialLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit Task' : 'Add Task'),
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back),
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(22, 12, 22, 28),
-                children: [
-                  _FieldLabel('Title'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _titleController,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(hintText: 'Task title'),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Enter a title'
-                        : null,
-                  ),
-                  const SizedBox(height: 18),
-                  _FieldLabel('Description'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _descriptionController,
-                    minLines: 3,
-                    maxLines: 4,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      hintText: 'Add details (optional)',
+      body: FigmaBackground(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final frameWidth = constraints.maxWidth
+                .clamp(0.0, 375.0)
+                .toDouble();
+            return Center(
+              child: SizedBox(
+                width: frameWidth,
+                height: constraints.maxHeight,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: SafeArea(
+                        child: Form(
+                          key: _formKey,
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(22, 8, 22, 104),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  height: 24,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Text(
+                                        isEditing ? 'Edit Task' : 'Add Task',
+                                        style: AppTextStyles.title.copyWith(
+                                          fontSize: 20,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        left: 0,
+                                        child: FigmaBackButton(
+                                          onPressed: () => context.pop(),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 40),
+                                const _FieldLabel('Title'),
+                                const SizedBox(height: 8),
+                                FigmaField(
+                                  controller: _titleController,
+                                  hintText: 'Task title',
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  validator: (value) =>
+                                      value == null || value.trim().isEmpty
+                                      ? 'Enter a title'
+                                      : null,
+                                ),
+                                const SizedBox(height: 18),
+                                const _FieldLabel('Description'),
+                                const SizedBox(height: 8),
+                                FigmaField(
+                                  controller: _descriptionController,
+                                  hintText: 'Add details (optional)',
+                                  height: 92,
+                                  minLines: 3,
+                                  maxLines: 3,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                ),
+                                const SizedBox(height: 32),
+                                _DateTimeTile(
+                                  label: 'Date',
+                                  value: _formatDesignDate(_date),
+                                  icon: Icons.calendar_month_rounded,
+                                  onTap: _selectDate,
+                                ),
+                                const SizedBox(height: 24),
+                                _DateTimeTile(
+                                  label: 'Start Time',
+                                  value: MaterialLocalizations.of(context)
+                                      .formatTimeOfDay(
+                                        TimeOfDay.fromDateTime(_startTime),
+                                      ),
+                                  icon: Icons.access_time_filled_rounded,
+                                  onTap: () => _selectTime(start: true),
+                                  iconColor: AppColors.completedText,
+                                ),
+                                const SizedBox(height: 24),
+                                _DateTimeTile(
+                                  label: 'End Time',
+                                  value: MaterialLocalizations.of(context)
+                                      .formatTimeOfDay(
+                                        TimeOfDay.fromDateTime(_endTime),
+                                      ),
+                                  icon: Icons.access_time_filled_rounded,
+                                  onTap: () => _selectTime(start: false),
+                                  iconColor: AppColors.completedText,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  _FieldLabel('Date'),
-                  const SizedBox(height: 8),
-                  _PickerTile(
-                    icon: Icons.calendar_month_outlined,
-                    label: localizations.formatMediumDate(_date),
-                    onTap: _selectDate,
-                  ),
-                  const SizedBox(height: 14),
-                  _TimeTile(
-                    label: 'Start Time',
-                    time: _startTime,
-                    onTap: () => _selectTime(start: true),
-                  ),
-                  const SizedBox(height: 14),
-                  _TimeTile(
-                    label: 'End Time',
-                    time: _endTime,
-                    onTap: () => _selectTime(start: false),
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton(
-                    onPressed: _saving ? null : _save,
-                    child: _saving
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(isEditing ? 'Save' : 'Add Task'),
-                  ),
-                ],
+                    Positioned(
+                      left: 22,
+                      right: 22,
+                      bottom: 32,
+                      child: FigmaButton(
+                        label: isEditing ? 'Save' : 'Add Task',
+                        onPressed: _saving ? null : _save,
+                        isLoading: _saving,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -253,62 +304,100 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     label,
-    style: Theme.of(context).textTheme.bodySmall
-        ?.copyWith(color: AppColors.secondaryText),
+    style: AppTextStyles.body.copyWith(color: AppColors.secondaryText),
   );
 }
 
-class _PickerTile extends StatelessWidget {
-  const _PickerTile({
-    required this.icon,
+class _DateTimeTile extends StatelessWidget {
+  const _DateTimeTile({
     required this.label,
+    required this.value,
+    required this.icon,
     required this.onTap,
+    this.iconColor = AppColors.primary,
   });
 
-  final IconData icon;
   final String label;
+  final String value;
+  final IconData icon;
   final VoidCallback onTap;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon, color: AppColors.primary),
-        title: Text(label),
-        trailing: const Icon(Icons.keyboard_arrow_down),
-        onTap: onTap,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 64,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [AppColors.cardShadow],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              children: [
+                Icon(icon, size: 27, color: iconColor),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: AppTextStyles.caption.copyWith(fontSize: 11),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        value,
+                        style: AppTextStyles.body.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isDark)
+                  Icon(
+                    Icons.arrow_drop_down,
+                    size: 24,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _TimeTile extends StatelessWidget {
-  const _TimeTile({
-    required this.label,
-    required this.time,
-    required this.onTap,
-  });
-
-  final String label;
-  final DateTime time;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.access_time, color: AppColors.primary),
-        title: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        subtitle: Text(
-          MaterialLocalizations.of(context)
-              .formatTimeOfDay(TimeOfDay.fromDateTime(time)),
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-        trailing: const Icon(Icons.keyboard_arrow_down),
-        onTap: onTap,
-      ),
-    );
-  }
+String _formatDesignDate(DateTime date) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${date.day.toString().padLeft(2, '0')} '
+      '${months[date.month - 1]}, ${date.year}';
 }
 
 DateTime _dateOnly(DateTime value) =>

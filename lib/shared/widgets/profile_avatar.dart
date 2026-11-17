@@ -17,29 +17,30 @@ class ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final path = imagePath;
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      child: path == null || path.isEmpty
-          ? Text(
-              name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
-              ),
-            )
-          : ClipOval(
-              child: Image.file(
-                File(path),
-                width: radius * 2,
-                height: radius * 2,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.person_outline,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+    return Semantics(
+      label: name.isEmpty ? 'User avatar' : '$name profile photo',
+      child: CircleAvatar(
+        radius: radius,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        child: ClipOval(
+          child: path == null || path.isEmpty
+              ? _defaultImage()
+              : Image.file(
+                  File(path),
+                  width: radius * 2,
+                  height: radius * 2,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => _defaultImage(),
                 ),
-              ),
-            ),
+        ),
+      ),
     );
   }
+
+  Widget _defaultImage() => Image.asset(
+    'assets/images/default_avatar.png',
+    width: radius * 2,
+    height: radius * 2,
+    fit: BoxFit.cover,
+  );
 }

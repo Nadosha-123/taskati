@@ -9,6 +9,12 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../../app/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/widgets/figma_background.dart';
+import '../../../../core/widgets/figma_back_button.dart';
+import '../../../../core/widgets/figma_button.dart';
+import '../../../../core/widgets/figma_field.dart';
 import '../../../../shared/widgets/profile_avatar.dart';
 import '../../domain/profile.dart';
 import '../providers/profile_provider.dart';
@@ -122,140 +128,253 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isSetup ? 'Complete Your Profile' : 'Profile'),
-        leading: widget.isSetup
-            ? null
-            : IconButton(
-                onPressed: () => context.pop(),
-                icon: const Icon(Icons.arrow_back),
-              ),
-      ),
-      body: profile.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Could not load profile: $error'),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () {
-                  ref.invalidate(profileProvider);
-                  _loadProfile();
-                },
-                child: const Text('Retry'),
-              ),
-            ],
+      body: FigmaBackground(
+        child: profile.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stackTrace) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Could not load profile: $error'),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () {
+                    ref.invalidate(profileProvider);
+                    _loadProfile();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
-        ),
-        data: (_) => SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 28),
-                  children: [
-                    Text(
-                      'Profile Image',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          _imagePath == null
-                              ? ProfileAvatar(
-                                  name: _nameController.text,
-                                  radius: 76,
-                                )
-                              : CircleAvatar(
-                                  radius: 76,
-                                  child: ClipOval(
-                                    child: Image.file(
-                                      File(_imagePath!),
-                                      width: 152,
-                                      height: 152,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) => Icon(
-                                            Icons.person_outline,
+          data: (_) => LayoutBuilder(
+            builder: (context, constraints) {
+              final frameWidth = constraints.maxWidth
+                  .clamp(0.0, 375.0)
+                  .toDouble();
+              return Center(
+                child: SizedBox(
+                  width: frameWidth,
+                  height: constraints.maxHeight,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: SafeArea(
+                          bottom: false,
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(22, 8, 22, 96),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  SizedBox(
+                                    height: 24,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Text(
+                                          widget.isSetup
+                                              ? 'Complete Your Profile'
+                                              : 'Profile',
+                                          style: AppTextStyles.title.copyWith(
+                                            fontSize: 20,
                                             color: Theme.of(context)
                                                 .colorScheme
-                                                .onPrimaryContainer,
+                                                .onSurface,
                                           ),
+                                        ),
+                                        if (!widget.isSetup)
+                                          Positioned(
+                                            left: 0,
+                                            child: FigmaBackButton(
+                                              onPressed: () => context.pop(),
+                                            ),
+                                          ),
+                                        if (!widget.isSetup)
+                                          Positioned(
+                                            right: 0,
+                                            child: IconButton(
+                                              tooltip: 'Switch theme',
+                                              padding: EdgeInsets.zero,
+                                              constraints:
+                                                  const BoxConstraints.tightFor(
+                                                    width: 24,
+                                                    height: 24,
+                                                  ),
+                                              onPressed: () {
+                                                ref
+                                                    .read(
+                                                      themeModeProvider
+                                                          .notifier,
+                                                    )
+                                                    .setThemeMode(
+                                                      isDark
+                                                          ? ThemeMode.light
+                                                          : ThemeMode.dark,
+                                                    );
+                                              },
+                                              icon: Icon(
+                                                isDark
+                                                    ? Icons.light_mode_outlined
+                                                    : Icons.dark_mode_outlined,
+                                                size: 20,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                          if (_imagePath != null)
-                            IconButton.filled(
-                              onPressed: () =>
-                                  setState(() => _imagePath = null),
-                              icon: const Icon(Icons.delete_outline),
-                              tooltip: 'Remove profile image',
+                                  const SizedBox(height: 86),
+                                  Text(
+                                    'Profile Image',
+                                    style: AppTextStyles.body.copyWith(
+                                      color: AppColors.secondaryText,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Center(
+                                    child: SizedBox(
+                                      width: 165,
+                                      height: 165,
+                                      child: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          ProfileAvatar(
+                                            name: _nameController.text,
+                                            imagePath: _imagePath,
+                                            radius: 82.5,
+                                          ),
+                                          if (_imagePath != null)
+                                            Positioned(
+                                              right: -3,
+                                              bottom: 8,
+                                              child: Material(
+                                                color: isDark
+                                                    ? Colors.black
+                                                    : Colors.white,
+                                                shape: const CircleBorder(),
+                                                child: InkWell(
+                                                  customBorder:
+                                                      const CircleBorder(),
+                                                  onTap: () => setState(
+                                                    () => _imagePath = null,
+                                                  ),
+                                                  child: const SizedBox.square(
+                                                    dimension: 38,
+                                                    child: Icon(
+                                                      Icons.delete_rounded,
+                                                      size: 23,
+                                                      color: Color(0xFFFF304D),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 34),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      _ProfileSourceButton(
+                                        label: 'From Camera',
+                                        width: 126,
+                                        onPressed: () =>
+                                            _pickImage(ImageSource.camera),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      _ProfileSourceButton(
+                                        label: 'From Gallery',
+                                        width: 120,
+                                        onPressed: () =>
+                                            _pickImage(ImageSource.gallery),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 42),
+                                  Text(
+                                    'Your Name',
+                                    style: AppTextStyles.body.copyWith(
+                                      color: AppColors.secondaryText,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  FigmaField(
+                                    controller: _nameController,
+                                    hintText: 'Your name',
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    validator: (value) =>
+                                        value == null || value.trim().isEmpty
+                                        ? 'Enter your name'
+                                        : null,
+                                  ),
+                                ],
+                              ),
                             ),
-                        ],
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _pickImage(ImageSource.camera),
-                            icon: const Icon(Icons.camera_alt_outlined),
-                            label: const Text('From Camera'),
-                          ),
+                      Positioned(
+                        left: 22,
+                        right: 22,
+                        bottom: 32,
+                        child: FigmaButton(
+                          label: widget.isSetup ? 'Let’s Start!' : 'Save',
+                          onPressed: _saving || !_initialized ? null : _save,
+                          isLoading: _saving,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _pickImage(ImageSource.gallery),
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('From Gallery'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 36),
-                    Text(
-                      'Your Name',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _nameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(hintText: 'Your name'),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                          ? 'Enter your name'
-                          : null,
-                    ),
-                    const SizedBox(height: 40),
-                    FilledButton(
-                      onPressed: _saving || !_initialized ? null : _save,
-                      child: _saving
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(widget.isSetup ? 'Let’s Start!' : 'Save'),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Your profile is stored on this device.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: AppColors.secondaryText),
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileSourceButton extends StatelessWidget {
+  const _ProfileSourceButton({
+    required this.label,
+    required this.width,
+    required this.onPressed,
+  });
+
+  final String label;
+  final double width;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: 36,
+      child: Material(
+        color: AppColors.lightAccent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onPressed,
+          child: Center(
+            child: Text(
+              label,
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
