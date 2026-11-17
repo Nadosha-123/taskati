@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_theme_toggle.dart';
 import '../../../../core/widgets/figma_background.dart';
 import '../../../../core/widgets/figma_back_button.dart';
 import '../../../../core/widgets/figma_button.dart';
@@ -21,10 +22,22 @@ class TaskFormScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasks = ref.watch(taskControllerProvider);
     return tasks.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
+              const Center(child: CircularProgressIndicator()),
+              const PositionedDirectional(
+                top: 8,
+                end: 8,
+                child: AppThemeToggle(),
+              ),
+            ],
+          ),
+        ),
+      ),
       error: (error, stackTrace) => Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(actions: const [AppThemeToggle()]),
         body: Center(child: Text('Could not load tasks: $error')),
       ),
       data: (data) {
@@ -33,7 +46,7 @@ class TaskFormScreen extends ConsumerWidget {
             : data.tasks.where((task) => task.id == taskId).firstOrNull;
         if (taskId != null && task == null) {
           return Scaffold(
-            appBar: AppBar(),
+            appBar: AppBar(actions: const [AppThemeToggle()]),
             body: const Center(child: Text('This task no longer exists.')),
           );
         }
@@ -193,7 +206,7 @@ class _TaskFormEditorState extends ConsumerState<_TaskFormEditor> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 SizedBox(
-                                  height: 24,
+                                  height: 40,
                                   child: Stack(
                                     alignment: Alignment.center,
                                     children: [
@@ -206,11 +219,15 @@ class _TaskFormEditorState extends ConsumerState<_TaskFormEditor> {
                                               .onSurface,
                                         ),
                                       ),
-                                      Positioned(
-                                        left: 0,
+                                      PositionedDirectional(
+                                        start: 0,
                                         child: FigmaBackButton(
                                           onPressed: () => context.pop(),
                                         ),
+                                      ),
+                                      const PositionedDirectional(
+                                        end: 0,
+                                        child: AppThemeToggle(),
                                       ),
                                     ],
                                   ),
@@ -275,10 +292,10 @@ class _TaskFormEditorState extends ConsumerState<_TaskFormEditor> {
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: 22,
-                      right: 22,
-                      bottom: 32,
+                    PositionedDirectional(
+                      start: 22,
+                      end: 22,
+                      bottom: MediaQuery.of(context).viewPadding.bottom + 16,
                       child: FigmaButton(
                         label: isEditing ? 'Save' : 'Add Task',
                         onPressed: _saving ? null : _save,

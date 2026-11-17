@@ -5,6 +5,7 @@ import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/onboarding/presentation/screens/splash_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/tasks/presentation/screens/task_form_screen.dart';
+import '../../core/widgets/app_theme_toggle.dart';
 import 'route_names.dart';
 import 'route_paths.dart';
 
@@ -46,10 +47,17 @@ final appRouter = GoRouter(
     ),
   ],
   errorBuilder: (context, state) => Scaffold(
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text('Unable to open this page: ${state.error}'),
+    body: SafeArea(
+      child: Stack(
+        children: [
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Unable to open this page: ${state.error}'),
+            ),
+          ),
+          const PositionedDirectional(top: 8, end: 8, child: AppThemeToggle()),
+        ],
       ),
     ),
   ),

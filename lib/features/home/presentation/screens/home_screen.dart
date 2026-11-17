@@ -7,6 +7,7 @@ import '../../../../core/constants/animation_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_lottie.dart';
+import '../../../../core/widgets/app_theme_toggle.dart';
 import '../../../../core/widgets/figma_background.dart';
 import '../../../../shared/widgets/profile_avatar.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
@@ -45,8 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       Positioned.fill(
                         child: taskState.when(
-                          loading: () =>
-                              const Center(child: CircularProgressIndicator()),
+                          loading: () => const _LoadingTasks(),
                           error: (error, stackTrace) => _LoadError(
                             message: 'Could not load tasks: $error',
                             onRetry: () =>
@@ -157,8 +157,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                         ),
                       ),
-                      Positioned(
-                        right: 22,
+                      PositionedDirectional(
+                        end: 22,
                         bottom: 12,
                         child: SizedBox(
                           width: 44,
@@ -337,6 +337,7 @@ class _HomeHeader extends StatelessWidget {
               ],
             ),
           ),
+          const AppThemeToggle(),
         ],
       ),
     );
@@ -548,8 +549,8 @@ class _FilterRow extends StatelessWidget {
               TaskFilter.completed => 15,
             },
             child: Padding(
-              padding: EdgeInsets.only(
-                right: index == filters.length - 1 ? 0 : 8,
+              padding: EdgeInsetsDirectional.only(
+                end: index == filters.length - 1 ? 0 : 8,
               ),
               child: _FilterButton(
                 filter: filters[index],
@@ -647,20 +648,45 @@ class _LoadError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
-          ],
+    return Stack(
+      children: [
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(message, textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
+              ],
+            ),
+          ),
         ),
-      ),
+        const _ThemeTogglePosition(),
+      ],
     );
   }
+}
+
+class _LoadingTasks extends StatelessWidget {
+  const _LoadingTasks();
+
+  @override
+  Widget build(BuildContext context) => const Stack(
+    children: [
+      Center(child: CircularProgressIndicator()),
+      _ThemeTogglePosition(),
+    ],
+  );
+}
+
+class _ThemeTogglePosition extends StatelessWidget {
+  const _ThemeTogglePosition();
+
+  @override
+  Widget build(BuildContext context) =>
+      const PositionedDirectional(top: 8, end: 8, child: AppThemeToggle());
 }
 
 String _formatProgressDate(DateTime date) =>

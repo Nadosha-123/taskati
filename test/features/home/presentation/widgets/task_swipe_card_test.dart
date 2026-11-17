@@ -78,11 +78,105 @@ void main() {
       },
     );
 
-    await tester.drag(find.byType(TaskSwipeCard), const Offset(170, 0));
+    await tester.drag(find.byType(TaskSwipeCard), const Offset(250, 0));
     await tester.pumpAndSettle();
 
     expect(completionCount, 1);
     expect(find.text('Complete'), findsNothing);
+  });
+
+  testWidgets('moderate right swipe stays partial and does not complete', (
+    tester,
+  ) async {
+    var completionCount = 0;
+    await _showCard(
+      tester,
+      task: task,
+      onTap: () {},
+      onEdit: () {},
+      onDelete: () async {},
+      onComplete: () async {
+        completionCount++;
+      },
+    );
+
+    await tester.drag(find.byType(TaskSwipeCard), const Offset(120, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Complete'), findsOneWidget);
+    expect(find.text('Edit'), findsOneWidget);
+    expect(completionCount, 0);
+  });
+
+  testWidgets('continuing from a partial reveal crosses the full threshold', (
+    tester,
+  ) async {
+    var completionCount = 0;
+    await _showCard(
+      tester,
+      task: task,
+      onTap: () {},
+      onEdit: () {},
+      onDelete: () async {},
+      onComplete: () async {
+        completionCount++;
+      },
+    );
+
+    await tester.drag(find.byType(TaskSwipeCard), const Offset(150, 0));
+    await tester.pumpAndSettle();
+    expect(completionCount, 0);
+    expect(find.text('Complete'), findsOneWidget);
+
+    await tester.drag(find.byType(TaskSwipeCard), const Offset(90, 0));
+    await tester.pumpAndSettle();
+
+    expect(completionCount, 1);
+  });
+
+  testWidgets('full left swipe requests deletion automatically once', (
+    tester,
+  ) async {
+    var deleteCount = 0;
+    await _showCard(
+      tester,
+      task: task,
+      onTap: () {},
+      onEdit: () {},
+      onDelete: () async {
+        deleteCount++;
+      },
+      onComplete: () async {},
+    );
+
+    await tester.drag(find.byType(TaskSwipeCard), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+
+    expect(deleteCount, 1);
+    expect(find.text('Delete'), findsNothing);
+  });
+
+  testWidgets('physical swipe actions work in RTL layouts', (tester) async {
+    await _showCard(
+      tester,
+      task: task,
+      textDirection: TextDirection.rtl,
+      onTap: () {},
+      onEdit: () {},
+      onDelete: () async {},
+      onComplete: () async {},
+    );
+
+    await tester.drag(find.byType(TaskSwipeCard), const Offset(110, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Complete'), findsOneWidget);
+    expect(find.text('Edit'), findsOneWidget);
+
+    await tester.drag(find.byType(TaskSwipeCard), const Offset(-110, 0));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(TaskSwipeCard), const Offset(-110, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete'), findsOneWidget);
   });
 
   testWidgets('swiping back or tapping outside closes revealed actions', (
@@ -251,6 +345,7 @@ Task _task(String id) => Task(
 Future<void> _showCard(
   WidgetTester tester, {
   required Task task,
+  TextDirection textDirection = TextDirection.ltr,
   required VoidCallback onTap,
   required VoidCallback onEdit,
   required Future<void> Function() onDelete,
@@ -259,19 +354,22 @@ Future<void> _showCard(
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
-        body: Padding(
-          padding: const EdgeInsets.only(top: 40),
-          child: Center(
-            child: SizedBox(
-              width: 335,
-              child: TaskSwipeCard(
-                task: task,
-                isRevealed: false,
-                onRevealChanged: (_) {},
-                onTap: onTap,
-                onEdit: onEdit,
-                onDelete: onDelete,
-                onComplete: onComplete,
+        body: Directionality(
+          textDirection: textDirection,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 40),
+            child: Center(
+              child: SizedBox(
+                width: 335,
+                child: TaskSwipeCard(
+                  task: task,
+                  isRevealed: false,
+                  onRevealChanged: (_) {},
+                  onTap: onTap,
+                  onEdit: onEdit,
+                  onDelete: onDelete,
+                  onComplete: onComplete,
+                ),
               ),
             ),
           ),

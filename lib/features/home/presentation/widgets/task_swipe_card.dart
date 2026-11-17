@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../tasks/domain/task.dart';
@@ -35,9 +38,9 @@ class _TaskSwipeCardState extends State<TaskSwipeCard>
   static const _revealThreshold = 58.0;
   static const _actionPreviewThreshold = 4.0;
   static const _flingRevealVelocity = 950.0;
-  static const _directCompleteDragThreshold = 150.0;
-  static const _directCompleteFlingVelocity = 1400.0;
-  static const _minimumFlingTravel = 56.0;
+  static const _minimumFullSwipeThreshold = 190.0;
+  static const _maximumFullSwipeThreshold = 260.0;
+  static const _maxDragExtent = 375.0;
 
   late final AnimationController _dragController;
   bool _actionInProgress = false;
@@ -52,8 +55,8 @@ class _TaskSwipeCardState extends State<TaskSwipeCard>
     super.initState();
     _dragController = AnimationController(
       vsync: this,
-      lowerBound: -_deleteRevealExtent,
-      upperBound: _completeRevealExtent,
+      lowerBound: -_maxDragExtent,
+      upperBound: _maxDragExtent,
       value: 0,
     );
   }
@@ -61,7 +64,7 @@ class _TaskSwipeCardState extends State<TaskSwipeCard>
   @override
   void didUpdateWidget(covariant TaskSwipeCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isRevealed && !widget.isRevealed) {
+    if (oldWidget.isRevealed && !widget.isRevealed && !_actionInProgress) {
       _springTo(0, 0);
     }
   }
@@ -78,23 +81,24 @@ class _TaskSwipeCardState extends State<TaskSwipeCard>
     if (_actionInProgress) return;
     _dragDistance += details.delta.dx;
     _dragController.value = (_dragOffset + details.delta.dx)
-        .clamp(-_deleteRevealExtent, _completeRevealExtent)
+        .clamp(-_maxDragExtent, _maxDragExtent)
         .toDouble();
   }
 
-  Future<void> _onDragEnd(DragEndDetails details) async {
+  Future<void> _onDragEnd(DragEndDetails details, double cardWidth) async {
     if (_actionInProgress) return;
     final velocity = details.primaryVelocity ?? 0;
-    final beganClosed = _dragStartOffset.abs() < _revealThreshold;
-    final strongRightSwipe =
-        beganClosed &&
-        widget.task.status != TaskStatus.completed &&
-        (_dragOffset >= _directCompleteDragThreshold ||
-            (velocity >= _directCompleteFlingVelocity &&
-                _dragDistance >= _minimumFlingTravel));
+    final fullSwipeThreshold = (cardWidth * 0.68)
+        .clamp(_minimumFullSwipeThreshold, _maximumFullSwipeThreshold)
+        .toDouble();
 
-    if (strongRightSwipe) {
-      await _runAction(widget.onComplete);
+    if (_dragOffset >= fullSwipeThreshold &&
+        widget.task.status != TaskStatus.completed) {
+      await _runSwipeAction(widget.onComplete, direction: 1);
+      return;
+    }
+    if (_dragOffset <= -fullSwipeThreshold) {
+      await _runSwipeAction(widget.onDelete, direction: -1);
       return;
     }
 
@@ -139,6 +143,33 @@ class _TaskSwipeCardState extends State<TaskSwipeCard>
     }
   }
 
+  Future<void> _runSwipeAction(
+    Future<void> Function() action, {
+    required double direction,
+  }) async {
+    if (_actionInProgress) return;
+    setState(() => _actionInProgress = true);
+    widget.onRevealChanged(false);
+    try {
+      unawaited(
+        HapticFeedback.lightImpact().catchError((Object error) {
+          debugPrint('Could not provide swipe haptic feedback: $error');
+        }),
+      );
+      await _dragController.animateTo(
+        direction * _maxDragExtent,
+        duration: const Duration(milliseconds: 170),
+        curve: Curves.easeInCubic,
+      );
+      await action();
+    } finally {
+      if (mounted) {
+        setState(() => _actionInProgress = false);
+        _springTo(0, 0);
+      }
+    }
+  }
+
   void _edit() {
     if (_actionInProgress) return;
     widget.onRevealChanged(false);
@@ -172,58 +203,62 @@ class _TaskSwipeCardState extends State<TaskSwipeCard>
   Widget build(BuildContext context) {
     final task = widget.task;
     final isCompleted = task.status == TaskStatus.completed;
-    return TapRegion(
-      onTapOutside: (_) {
-        if (widget.isRevealed || _dragOffset != 0) _close();
-      },
-      child: Container(
-        height: 94,
-        decoration: const BoxDecoration(
-          borderRadius: BorderRadius.all(Radius.circular(15)),
-          boxShadow: [AppColors.cardShadow],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: _onDragStart,
-            onHorizontalDragUpdate: _onDragUpdate,
-            onHorizontalDragEnd: _onDragEnd,
-            child: AnimatedBuilder(
-              animation: _dragController,
-              builder: (context, _) {
-                final offset = _dragOffset;
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (offset > _actionPreviewThreshold)
-                      _completeAndEditActions(offset),
-                    if (offset < -_actionPreviewThreshold)
-                      _deleteAction(offset),
-                    Transform.translate(
-                      offset: Offset(offset, 0),
-                      child: AnimatedScale(
-                        scale: _pressed ? 0.99 : 1,
-                        duration: const Duration(milliseconds: 110),
-                        child: Material(
-                          color: Theme.of(context).colorScheme.surface,
-                          child: InkWell(
-                            onTap: widget.onTap,
-                            onTapDown: (_) => setState(() => _pressed = true),
-                            onTapUp: (_) => setState(() => _pressed = false),
-                            onTapCancel: () => setState(() => _pressed = false),
-                            child: _TaskCardContent(
-                              task: task,
-                              isCompleted: isCompleted,
-                              onComplete: widget.onComplete,
+    return LayoutBuilder(
+      builder: (context, constraints) => TapRegion(
+        onTapOutside: (_) {
+          if (widget.isRevealed || _dragOffset != 0) _close();
+        },
+        child: Container(
+          height: 94,
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.all(Radius.circular(15)),
+            boxShadow: [AppColors.cardShadow],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: _onDragStart,
+              onHorizontalDragUpdate: _onDragUpdate,
+              onHorizontalDragEnd: (details) =>
+                  _onDragEnd(details, constraints.maxWidth),
+              child: AnimatedBuilder(
+                animation: _dragController,
+                builder: (context, _) {
+                  final offset = _dragOffset;
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (offset > _actionPreviewThreshold)
+                        _completeAndEditActions(offset),
+                      if (offset < -_actionPreviewThreshold)
+                        _deleteAction(offset),
+                      Transform.translate(
+                        offset: Offset(offset, 0),
+                        child: AnimatedScale(
+                          scale: _pressed ? 0.99 : 1,
+                          duration: const Duration(milliseconds: 110),
+                          child: Material(
+                            color: Theme.of(context).colorScheme.surface,
+                            child: InkWell(
+                              onTap: widget.onTap,
+                              onTapDown: (_) => setState(() => _pressed = true),
+                              onTapUp: (_) => setState(() => _pressed = false),
+                              onTapCancel: () =>
+                                  setState(() => _pressed = false),
+                              child: _TaskCardContent(
+                                task: task,
+                                isCompleted: isCompleted,
+                                onComplete: widget.onComplete,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -234,11 +269,11 @@ class _TaskSwipeCardState extends State<TaskSwipeCard>
   Widget _completeAndEditActions(double offset) {
     final progress = (offset / _completeRevealExtent).clamp(0.0, 1.0);
     return Align(
-      alignment: AlignmentDirectional.centerStart,
+      alignment: Alignment.centerLeft,
       child: SizedBox(
-        width: _completeRevealExtent,
+        width: offset > _completeRevealExtent ? offset : _completeRevealExtent,
         child: Transform.scale(
-          alignment: AlignmentDirectional.centerStart,
+          alignment: Alignment.centerLeft,
           scaleX: 0.94 + progress * 0.06,
           child: Opacity(
             opacity: progress,
@@ -277,11 +312,13 @@ class _TaskSwipeCardState extends State<TaskSwipeCard>
   Widget _deleteAction(double offset) {
     final progress = (offset.abs() / _deleteRevealExtent).clamp(0.0, 1.0);
     return Align(
-      alignment: AlignmentDirectional.centerEnd,
+      alignment: Alignment.centerRight,
       child: SizedBox(
-        width: _deleteRevealExtent,
+        width: offset.abs() > _deleteRevealExtent
+            ? offset.abs()
+            : _deleteRevealExtent,
         child: Transform.scale(
-          alignment: AlignmentDirectional.centerEnd,
+          alignment: Alignment.centerRight,
           scaleX: 0.94 + progress * 0.06,
           child: Opacity(
             opacity: progress,

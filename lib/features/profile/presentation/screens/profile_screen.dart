@@ -10,7 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/widgets/app_theme_toggle.dart';
 import '../../../../core/widgets/figma_background.dart';
 import '../../../../core/widgets/figma_back_button.dart';
 import '../../../../core/widgets/figma_button.dart';
@@ -133,22 +133,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       body: FigmaBackground(
         child: profile.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stackTrace) => Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Could not load profile: $error'),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () {
-                    ref.invalidate(profileProvider);
-                    _loadProfile();
-                  },
-                  child: const Text('Retry'),
+          loading: () => const _ProfileLoading(),
+          error: (error, stackTrace) => Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Could not load profile: $error'),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () {
+                        ref.invalidate(profileProvider);
+                        _loadProfile();
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const _ProfileThemeToggle(),
+            ],
           ),
           data: (_) => LayoutBuilder(
             builder: (context, constraints) {
@@ -172,7 +177,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   SizedBox(
-                                    height: 24,
+                                    height: 40,
                                     child: Stack(
                                       alignment: Alignment.center,
                                       children: [
@@ -188,46 +193,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                           ),
                                         ),
                                         if (!widget.isSetup)
-                                          Positioned(
-                                            left: 0,
+                                          PositionedDirectional(
+                                            start: 0,
                                             child: FigmaBackButton(
                                               onPressed: () => context.pop(),
                                             ),
                                           ),
-                                        if (!widget.isSetup)
-                                          Positioned(
-                                            right: 0,
-                                            child: IconButton(
-                                              tooltip: 'Switch theme',
-                                              padding: EdgeInsets.zero,
-                                              constraints:
-                                                  const BoxConstraints.tightFor(
-                                                    width: 24,
-                                                    height: 24,
-                                                  ),
-                                              onPressed: () {
-                                                ref
-                                                    .read(
-                                                      themeModeProvider
-                                                          .notifier,
-                                                    )
-                                                    .setThemeMode(
-                                                      isDark
-                                                          ? ThemeMode.light
-                                                          : ThemeMode.dark,
-                                                    );
-                                              },
-                                              icon: Icon(
-                                                isDark
-                                                    ? Icons.light_mode_outlined
-                                                    : Icons.dark_mode_outlined,
-                                                size: 20,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface,
-                                              ),
-                                            ),
-                                          ),
+                                        PositionedDirectional(
+                                          end: 0,
+                                          child: const AppThemeToggle(),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -252,8 +227,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                             radius: 82.5,
                                           ),
                                           if (_imagePath != null)
-                                            Positioned(
-                                              right: -3,
+                                            PositionedDirectional(
+                                              end: -3,
                                               bottom: 8,
                                               child: Material(
                                                 color: isDark
@@ -324,10 +299,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ),
                       ),
-                      Positioned(
-                        left: 22,
-                        right: 22,
-                        bottom: 32,
+                      PositionedDirectional(
+                        start: 22,
+                        end: 22,
+                        bottom: MediaQuery.of(context).viewPadding.bottom + 16,
                         child: FigmaButton(
                           label: widget.isSetup ? 'Let’s Start!' : 'Save',
                           onPressed: _saving || !_initialized ? null : _save,
@@ -382,4 +357,27 @@ class _ProfileSourceButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ProfileLoading extends StatelessWidget {
+  const _ProfileLoading();
+
+  @override
+  Widget build(BuildContext context) => const Stack(
+    children: [
+      Center(child: CircularProgressIndicator()),
+      _ProfileThemeToggle(),
+    ],
+  );
+}
+
+class _ProfileThemeToggle extends StatelessWidget {
+  const _ProfileThemeToggle();
+
+  @override
+  Widget build(BuildContext context) => PositionedDirectional(
+    top: MediaQuery.of(context).viewPadding.top + 8,
+    end: 8,
+    child: const AppThemeToggle(),
+  );
 }

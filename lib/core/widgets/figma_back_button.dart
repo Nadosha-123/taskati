@@ -17,7 +17,10 @@ class FigmaBackButton extends StatelessWidget {
         onPressed: onPressed,
         icon: CustomPaint(
           size: const Size.square(24),
-          painter: _BackArrowPainter(Theme.of(context).colorScheme.onSurface),
+          painter: _BackArrowPainter(
+            Theme.of(context).colorScheme.onSurface,
+            Directionality.of(context),
+          ),
         ),
       ),
     );
@@ -25,12 +28,18 @@ class FigmaBackButton extends StatelessWidget {
 }
 
 class _BackArrowPainter extends CustomPainter {
-  const _BackArrowPainter(this.color);
+  const _BackArrowPainter(this.color, this.textDirection);
 
   final Color color;
+  final TextDirection textDirection;
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (textDirection == TextDirection.rtl) {
+      canvas
+        ..translate(size.width, 0)
+        ..scale(-1, 1);
+    }
     final paint = Paint()..color = color;
     final arrowhead = Path()
       ..moveTo(3, 12)
@@ -49,5 +58,5 @@ class _BackArrowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BackArrowPainter oldDelegate) =>
-      oldDelegate.color != color;
+      oldDelegate.color != color || oldDelegate.textDirection != textDirection;
 }

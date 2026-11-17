@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -28,11 +30,19 @@ class FigmaBackground extends StatelessWidget {
             top: decorationTop,
             width: 451,
             height: decorationHeight,
-            child: SvgPicture.asset(
-              isDark
-                  ? 'assets/vectors/decorations_dark.svg'
-                  : 'assets/vectors/decorations_light.svg',
-              fit: BoxFit.fill,
+            child: RepaintBoundary(
+              child: Opacity(
+                opacity: 0.4,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 42, sigmaY: 42),
+                  child: SvgPicture.asset(
+                    isDark
+                        ? 'assets/vectors/decorations_dark.svg'
+                        : 'assets/vectors/decorations_light.svg',
+                    fit: BoxFit.fill,
+                  ),
+                ),
+              ),
             ),
           ),
           Positioned.fill(child: child),
